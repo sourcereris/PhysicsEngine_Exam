@@ -97,6 +97,9 @@
     <ClInclude Include="KParticle.h" />
     <ClInclude Include="KParticleSystem.h" />
     <ClInclude Include="KParticleSystemData.h" />
+    <ClInclude Include="QPCTimer.h">
+      <Filter>Physics</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="small.ico">

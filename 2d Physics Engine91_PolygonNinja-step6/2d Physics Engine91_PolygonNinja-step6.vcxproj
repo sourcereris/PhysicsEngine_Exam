@@ -99,6 +99,7 @@
     <ClInclude Include="KWorld.h" />
     <ClInclude Include="LinearAlgebra.h" />
     <ClInclude Include="KManifold.h" />
+    <ClInclude Include="QPCTimer.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="KShape.h" />
     <ClInclude Include="targetver.h" />
