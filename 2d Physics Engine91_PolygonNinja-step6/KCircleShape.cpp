@@ -27,3 +27,10 @@ KShape::Type KCircleShape::GetType() const
 {
 	return Type::eCircle;
 }
+
+void KCircleShape::ComputeAABB()
+{
+	KVector2 rVec(radius, radius);
+	m_aabb.min = position - rVec;
+	m_aabb.max = position + rVec;
+}

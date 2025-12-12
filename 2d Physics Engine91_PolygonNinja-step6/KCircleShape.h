@@ -14,6 +14,7 @@ struct KCircleShape : public KShape
 	void ComputeMass(float density);
 	void SetRotation(float radians);
 	KShape::Type GetType() const;
+	void ComputeAABB() override;
 public:
 	float radius = 0.0f;
 };

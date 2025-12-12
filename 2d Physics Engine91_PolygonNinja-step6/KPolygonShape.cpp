@@ -66,6 +66,22 @@ KShape::Type KPolygonShape::GetType() const
 	return Type::ePoly;
 }
 
+void KPolygonShape::ComputeAABB()
+{
+	KVector2 minPt(FLT_MAX, FLT_MAX);
+	KVector2 maxPt(-FLT_MAX, -FLT_MAX);
+
+	for (const KVector2& v : m_vertices) {
+		// Transform local vertex to world space
+		KVector2 worldV = position + rotation * v;
+
+		minPt = KVector2::Min(minPt, worldV);
+		maxPt = KVector2::Max(maxPt, worldV);
+	}
+	m_aabb.min = minPt;
+	m_aabb.max = maxPt;
+}
+
 // Half width and half height
 void KPolygonShape::SetBox(float hw, float hh)
 {

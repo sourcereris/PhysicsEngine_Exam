@@ -13,6 +13,7 @@ struct KPolygonShape : public KShape
 	void ComputeMass(float density);
 	void SetRotation(float radians);
 	KShape::Type GetType() const;
+	void ComputeAABB() override;
 	void SetBox(float halfWidth, float halfHeight);
 	void Set(KVector2* vertices, uint32 count);
 	void FindConvexHull(KVector2 points[], int n, std::vector<KVector2>& convexHullPoints);

@@ -45,6 +45,27 @@ KVector2 KVectorUtil::WorldToScreen(const KVector2& v0)
 
 void KVectorUtil::DrawLine(HDC hdc, const KVector2& v0_, const KVector2& v1_, int lineWidth, int penStyle, COLORREF color_)
 {
+	static HPEN s_hCachedPen = nullptr;
+	static int s_prevLineWidth = -1;
+	static int s_prevPenStyle = -1;
+	static COLORREF s_prevColor = 0xFFFFFFFF;
+
+	if (s_hCachedPen == nullptr ||
+		lineWidth != s_prevLineWidth ||
+		penStyle != s_prevPenStyle ||
+		color_ != s_prevColor)
+	{
+		// Settings changed! Delete the old pen and create a new one
+		if (s_hCachedPen) DeleteObject(s_hCachedPen);
+
+		s_hCachedPen = CreatePen(penStyle, lineWidth, color_);
+
+		// Update cache state
+		s_prevLineWidth = lineWidth;
+		s_prevPenStyle = penStyle;
+		s_prevColor = color_;
+	}
+
 	KMatrix2    basis;
 	KMatrix2    screen;
 	basis.Set(g_basis2.basis0, g_basis2.basis1);
@@ -60,14 +81,12 @@ void KVectorUtil::DrawLine(HDC hdc, const KVector2& v0_, const KVector2& v1_, in
 	v0 = v0 + g_screenCoordinate.origin;
 	v1 = v1 + g_screenCoordinate.origin;
 
-    HPEN hpen = CreatePen(penStyle, lineWidth, color_);
-    HGDIOBJ original = SelectObject(hdc, hpen);
+    HGDIOBJ original = SelectObject(hdc, s_hCachedPen);
     {
         MoveToEx(hdc, (int)v0.x, (int)v0.y, nullptr);
         LineTo(hdc, (int)v1.x, (int)v1.y);
     }
     SelectObject(hdc, original);
-    DeleteObject(hpen);
 }
 
 void KVectorUtil::DrawLine(HDC hdc, const std::vector<KVector2>& points, int lineWidth, int penStyle, COLORREF color, int strip0loop1)
@@ -371,29 +390,33 @@ void KVectorUtil::Clip(const std::vector<KVector2>& points, const KVector2 p0, c
 	}
 }
 
+static HPEN s_SharedBorderPen = CreatePen(PS_SOLID, 2, RGB(0, 0, 0));
+
 void KVectorUtil::DrawPolygon(HDC hdc, std::vector<KVector2>& vertices, COLORREF color)
 {
-	HPEN hPen = CreatePen(PS_SOLID, 2, RGB(0,0,0));
-	HPEN hOldPen = SelectPen(hdc, hPen);
+	static std::vector<POINT> points;
 
-	HBRUSH hBrush = CreateSolidBrush(color);
-	HBRUSH hOldBrush = SelectBrush(hdc, hBrush);
+	if (points.size() < vertices.size())
+	{
+		points.resize(vertices.size());
+	}
 
-	std::vector<POINT> points;
-	points.resize(vertices.size());
 	for (uint32 i=0;i<vertices.size();++i)
 	{
 		KVector2 pos = WorldToScreen(vertices[i]);
 		points[i].x = pos.x;
 		points[i].y = pos.y;
 	}
-	Polygon(hdc, &points[0], points.size());
 
-	SelectBrush(hdc, hOldBrush);
-	DeleteObject(hBrush);
+	HGDIOBJ oldPen = SelectObject(hdc, s_SharedBorderPen);
 
-	SelectPen(hdc, hOldPen);
-	DeleteObject(hPen);
+	HGDIOBJ oldBrush = SelectObject(hdc, GetStockObject(DC_BRUSH));
+	SetDCBrushColor(hdc, color);
+
+	Polygon(hdc, points.data(), (int)vertices.size());
+
+	SelectObject(hdc, oldBrush);
+	SelectObject(hdc, oldPen);
 }
 
 int KVectorUtil::GetDirection(const KVector2& a, const KVector2& b, const KVector2& c)

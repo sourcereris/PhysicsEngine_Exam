@@ -12,6 +12,20 @@
 struct KRigidbody;
 struct KShape;
 typedef std::shared_ptr<KShape>	KShapePtr;
+
+struct KAABB
+{
+	KVector2 min;
+	KVector2 max;
+	
+	static bool Overlaps(const KAABB& a, const KAABB& b)
+	{
+		if (a.max.x < b.min.x || a.min.x > b.max.x) return false;
+		if (a.max.y < b.min.y || a.min.y > b.max.y) return false;
+		return true;
+	}
+};
+
 struct KShape
 {
 	enum Type
@@ -28,6 +42,10 @@ public:
 		g = Random(0.2f, 0.8f);
 		b = Random(0.2f, 0.8f);
 	}
+
+	KAABB m_aabb;
+	virtual void ComputeAABB() = 0;
+
 	virtual void Initialize() = 0;
 	virtual void ComputeMass(float density) = 0;
 	virtual void SetRotation(float radians) = 0;
@@ -41,5 +59,6 @@ public:
 	// Store a color in RGB format
 	float r, g, b;
 };
+
 
 #endif // SHAPE_H

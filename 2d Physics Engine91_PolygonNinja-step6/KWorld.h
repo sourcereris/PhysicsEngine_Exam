@@ -9,6 +9,8 @@
 #include "KManifold.h"
 #include "KPhysicsEngine.h"
 
+#include "KSpatialHash.h"
+
 struct KWorld
 {
 public:
@@ -20,7 +22,7 @@ public:
 	static bool				frameStepping;
 	static bool				canStep;
 	static const bool		enableFriction = true; // 20210428_jintaeks
-	static const bool		drawPenetration = true;
+	static const bool		drawPenetration = false;
 
 public:
 	/*constructor*/			KWorld(float dt, uint32 iterations);
@@ -36,6 +38,7 @@ public:
 	std::shared_ptr<KShape> CreateCircle(float radius, float x, float y, bool isStatic = false);
 	std::shared_ptr<KShape> CreatePolygon(KVector2* vertices, uint32 numVertices, float x, float y, bool isStatic = false);
 	std::shared_ptr<KShape> CreateBox(float width, float height, float x, float y, bool isStatic = false);
+	KSpatialHash			m_spatialHash{ 3.0f }; // cell size
 
 private:
 	bool					_IsBodyInRemoveCandidate(std::shared_ptr<KRigidbody> body_);

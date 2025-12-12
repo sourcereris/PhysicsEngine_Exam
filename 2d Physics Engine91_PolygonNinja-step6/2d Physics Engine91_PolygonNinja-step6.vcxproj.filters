@@ -100,6 +100,7 @@
     <ClInclude Include="QPCTimer.h">
       <Filter>Physics</Filter>
     </ClInclude>
+    <ClInclude Include="KSpatialHash.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="small.ico">
