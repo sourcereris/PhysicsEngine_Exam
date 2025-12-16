@@ -64,48 +64,42 @@ bool KParticleSystem::Update(float fElapsedTime)
 	return false;
 }
 
-// In KParticleSystem.cpp
-
 void KParticleSystem::Draw(HDC hdc)
 {
-	// Optimization: Cache the coordinate system once
-	// (Instead of recalculating matrices for every single pixel)
-
-	// We will draw simple filled rectangles/dots which is MUCH faster than lines
-	HGDIOBJ oldPen = SelectObject(hdc, GetStockObject(NULL_PEN)); // No borders
-	HGDIOBJ oldBrush = SelectObject(hdc, GetStockObject(DC_BRUSH)); // Solid fill
+	// --- GDI BATCH SETUP ---
+	// Use NULL_PEN (no border) and DC_BRUSH (solid fill) to minimize object creation overhead.
+	// This allows to just change the DC brush color per particle.
+	HGDIOBJ oldPen = SelectObject(hdc, GetStockObject(NULL_PEN));
+	HGDIOBJ oldBrush = SelectObject(hdc, GetStockObject(DC_BRUSH));
 
 	for (size_t i = 0; i < m_particles.size(); i++)
 	{
 		KParticle& part = *m_particles[i];
 
-		// 1. Convert World Position to Screen Position manually
-		// (This skips the overhead of KVectorUtil::DrawLine)
+		// --- COORDINATE TRANSFORMATION ---
+		// Manually convert to screen space to bypass the heavier KVectorUtil::DrawLine logic.
 		KVector2 screenPos = KVectorUtil::WorldToScreen(part.GetPosition());
 
-		// 2. Calculate fade/size
-		// Simple visual: Fade alpha is hard in GDI, so we simulate fade by shrinking
+		// --- LIFETIME VISUALS ---
+		// Simulate "fading out" by reducing size based on age ratio, as GDI alpha blending is expensive.
 		double ratio = part.GetAge() / part.GetLifetime();
-		int size = 2; // Default size (radius in pixels)
+		int size = 2; // Base radius
 
-		if (ratio > 0.5) size = 1; // Shrink as it dies
-		if (ratio > 0.8) size = 0; // Disappear near end
+		if (ratio > 0.5) size = 1; // Shrink
+		if (ratio > 0.8) size = 0; // Disappear
 
 		if (size > 0)
 		{
-			// 3. Set Color
 			SetDCBrushColor(hdc, part.GetColor());
 
-			// 4. Draw Fast Rectangle (or Ellipse)
-			// Ellipse is slightly slower than Rectangle, but much faster than 10 lines.
-			// For sparks, rectangles look fine.
+			// Draw primitive (Rectangle is faster than Ellipse)
 			Rectangle(hdc,
 				(int)screenPos.x - size, (int)screenPos.y - size,
 				(int)screenPos.x + size, (int)screenPos.y + size);
 		}
 	}
 
-	// Restore GDI objects
+	// Restore previous GDI state
 	SelectObject(hdc, oldBrush);
 	SelectObject(hdc, oldPen);
 }

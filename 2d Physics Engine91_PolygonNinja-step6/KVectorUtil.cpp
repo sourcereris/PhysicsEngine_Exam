@@ -45,48 +45,57 @@ KVector2 KVectorUtil::WorldToScreen(const KVector2& v0)
 
 void KVectorUtil::DrawLine(HDC hdc, const KVector2& v0_, const KVector2& v1_, int lineWidth, int penStyle, COLORREF color_)
 {
+	// --- PEN CACHING OPTIMIZATION ---
+	// Static variables persist between function calls to remember the last used pen state.
 	static HPEN s_hCachedPen = nullptr;
 	static int s_prevLineWidth = -1;
 	static int s_prevPenStyle = -1;
 	static COLORREF s_prevColor = 0xFFFFFFFF;
 
+	// Only recreate the pen if the requested settings differ from the cached one.
+	// Creating GDI objects (CreatePen) is expensive, so we avoid it when possible.
 	if (s_hCachedPen == nullptr ||
 		lineWidth != s_prevLineWidth ||
 		penStyle != s_prevPenStyle ||
 		color_ != s_prevColor)
 	{
-		// Settings changed! Delete the old pen and create a new one
+		// Settings changed! Delete the old pen to prevent memory leaks.
 		if (s_hCachedPen) DeleteObject(s_hCachedPen);
 
+		// Create and cache the new pen.
 		s_hCachedPen = CreatePen(penStyle, lineWidth, color_);
 
-		// Update cache state
+		// Update cache state trackers.
 		s_prevLineWidth = lineWidth;
 		s_prevPenStyle = penStyle;
 		s_prevColor = color_;
 	}
 
+	// --- COORDINATE TRANSFORMATION ---
+	// Transform World Space points to Screen Space.
 	KMatrix2    basis;
 	KMatrix2    screen;
 	basis.Set(g_basis2.basis0, g_basis2.basis1);
 	screen.Set(g_screenCoordinate.axis0, g_screenCoordinate.axis1);
 
-	KVector2 v0;// = g_basis2.Transform(v0_);
-	KVector2 v1;// = g_basis2.Transform(v1_);
+	KVector2 v0;
+	KVector2 v1;
+
+	// Apply Basis and Screen scaling
 	v0 = screen * basis * v0_;
 	v1 = screen * basis * v1_;
 
-    //v0 = g_screenCoordinate.Transform(v0);
-    //v1 = g_screenCoordinate.Transform(v1);
+	// Apply Screen Origin translation
 	v0 = v0 + g_screenCoordinate.origin;
 	v1 = v1 + g_screenCoordinate.origin;
 
-    HGDIOBJ original = SelectObject(hdc, s_hCachedPen);
-    {
-        MoveToEx(hdc, (int)v0.x, (int)v0.y, nullptr);
-        LineTo(hdc, (int)v1.x, (int)v1.y);
-    }
-    SelectObject(hdc, original);
+	// Draw the line using the cached pen
+	HGDIOBJ original = SelectObject(hdc, s_hCachedPen);
+	{
+		MoveToEx(hdc, (int)v0.x, (int)v0.y, nullptr);
+		LineTo(hdc, (int)v1.x, (int)v1.y);
+	}
+	SelectObject(hdc, original);
 }
 
 void KVectorUtil::DrawLine(HDC hdc, const std::vector<KVector2>& points, int lineWidth, int penStyle, COLORREF color, int strip0loop1)

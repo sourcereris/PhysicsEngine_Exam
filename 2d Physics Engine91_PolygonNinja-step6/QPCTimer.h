@@ -24,7 +24,7 @@ void InitializeQPCTimer()
 	}
 }
 
-float GetDeltaTime()
+float Tick()
 {
 	if(g_Frequency == 0)
 	{
@@ -48,7 +48,7 @@ float GetDeltaTime()
 	return dt;
 }
 
-float GetElapsedTime()
+float PeekDeltaTime()
 {
 	if (g_Frequency == 0) return 0.0f;
 

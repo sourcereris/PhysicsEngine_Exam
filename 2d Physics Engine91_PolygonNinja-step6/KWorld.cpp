@@ -65,27 +65,27 @@ struct PairHash
 
 void KWorld::GenerateCollisionInfo()
 {
+	// Clear previous frame data
 	m_contacts.clear();
 	m_spatialHash.Clear();
 
-	// 1. Update AABBs and Populate Grid
+	// --- BROAD PHASE ---
+	// Update AABBs and populate the spatial hash grid
 	for (auto& body : m_bodies) {
 		if (body->shape) {
-			body->shape->ComputeAABB(); // Calculate current bounding box
-			m_spatialHash.Insert(body.get()); // Insert raw pointer into grid
+			body->shape->ComputeAABB();
+			m_spatialHash.Insert(body.get());
 		}
 	}
 
-	// Set to keep track of pairs we've already checked this frame
+	// Track checked pairs to prevent redundant checks across cell boundaries
 	std::unordered_set<std::pair<KRigidbody*, KRigidbody*>, PairHash> checkedPairs;
 
-	// 2. Iterate through only the active cells
+	// Iterate through active buckets (grid cells) only
 	for (auto& [key, bucket] : m_spatialHash.m_buckets)
 	{
-		// If bucket has less than 2 bodies, no collision possible inside it
 		if (bucket.size() < 2) continue;
 
-		// Check collisions between all bodies in this SINGLE cell
 		for (size_t i = 0; i < bucket.size(); ++i)
 		{
 			KRigidbody* A = bucket[i];
@@ -94,33 +94,29 @@ void KWorld::GenerateCollisionInfo()
 			{
 				KRigidbody* B = bucket[j];
 
-				// Skip static-static collisions
+				// Optimization: Ignore collision if both bodies are static
 				if (A->m_invMass == 0 && B->m_invMass == 0) continue;
 
 				// --- DUPLICATE CHECK ---
-				// Sort pointers so {A, B} is same as {B, A}
+				// Normalize pair order to ensure {A, B} is treated same as {B, A}
 				KRigidbody* first = (A < B) ? A : B;
 				KRigidbody* second = (A < B) ? B : A;
 
-				// If we already checked this pair in a previous cell, skip
+				// Skip if this pair was already resolved in another cell
 				if (checkedPairs.count({ first, second })) continue;
-
-				// Mark as checked
 				checkedPairs.insert({ first, second });
 
 				// --- NARROW PHASE ---
-				// We typically use the shared_ptrs for the Manifold, 
-				// so we need to recover them or change KManifold to use raw pointers.
-				// Since A and B are raw pointers here, but KManifold expects shared_ptr:
 				auto sharedA = A->shared_from_this();
 				auto sharedB = B->shared_from_this();
 
-				// Standard AABB overlap check (Fast rejection)
+				// Fast Rejection: Simple AABB overlap check
 				if (!KAABB::Overlaps(A->shape->m_aabb, B->shape->m_aabb)) continue;
 
-				// Full SAT check
+				// Precise Check: Separating Axis Theorem (SAT) via Manifold
 				KManifold m(sharedA, sharedB);
 				m.Solve();
+
 				if (m.contact_count)
 					m_contacts.emplace_back(m);
 			}
