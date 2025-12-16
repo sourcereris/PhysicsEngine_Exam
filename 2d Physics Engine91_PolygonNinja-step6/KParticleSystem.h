@@ -26,6 +26,7 @@ public:
 		std::function<bool(KParticleSystemPtr)>				afterUpdateCallback;
 		std::function<KParticlePtr (KParticleSystemPtr)>	generateParticleCallback;
 	};
+	bool		m_Regenerate;
 protected:
 	KParticleSystemDataPtr		m_spParticleSystemData;
 #ifdef _UNDEFINED
@@ -35,7 +36,6 @@ protected:
 #ifdef _UNDEFINED
 	KParticle*			_particles;
 #endif
-	bool						m_Regenerate;
 	KVector2					m_Position;
 	int							m_maximumNumParticle;
 	COLORREF					m_Color;

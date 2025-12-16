@@ -64,19 +64,48 @@ bool KParticleSystem::Update(float fElapsedTime)
 	return false;
 }
 
+// In KParticleSystem.cpp
+
 void KParticleSystem::Draw(HDC hdc)
 {
-	const int numSegments = 10;
-	// For each particle in the system
+	// Optimization: Cache the coordinate system once
+	// (Instead of recalculating matrices for every single pixel)
+
+	// We will draw simple filled rectangles/dots which is MUCH faster than lines
+	HGDIOBJ oldPen = SelectObject(hdc, GetStockObject(NULL_PEN)); // No borders
+	HGDIOBJ oldBrush = SelectObject(hdc, GetStockObject(DC_BRUSH)); // Solid fill
+
 	for (size_t i = 0; i < m_particles.size(); i++)
 	{
-		// Get the current particle
 		KParticle& part = *m_particles[i];
-		// Calculate particle intensity
-		const double intense = (double)part.GetAge()/ part.GetLifetime();
-		const double radius = __max(0.01, intense * 0.10);
-		KRgb rgb(0, 0, 1);
-		COLORREF color = rgb.GetColor();
-		KVectorUtil::DrawCircle(hdc, part.GetPosition(), (float)radius, numSegments, 1, 0, color);
+
+		// 1. Convert World Position to Screen Position manually
+		// (This skips the overhead of KVectorUtil::DrawLine)
+		KVector2 screenPos = KVectorUtil::WorldToScreen(part.GetPosition());
+
+		// 2. Calculate fade/size
+		// Simple visual: Fade alpha is hard in GDI, so we simulate fade by shrinking
+		double ratio = part.GetAge() / part.GetLifetime();
+		int size = 2; // Default size (radius in pixels)
+
+		if (ratio > 0.5) size = 1; // Shrink as it dies
+		if (ratio > 0.8) size = 0; // Disappear near end
+
+		if (size > 0)
+		{
+			// 3. Set Color
+			SetDCBrushColor(hdc, part.GetColor());
+
+			// 4. Draw Fast Rectangle (or Ellipse)
+			// Ellipse is slightly slower than Rectangle, but much faster than 10 lines.
+			// For sparks, rectangles look fine.
+			Rectangle(hdc,
+				(int)screenPos.x - size, (int)screenPos.y - size,
+				(int)screenPos.x + size, (int)screenPos.y + size);
+		}
 	}
+
+	// Restore GDI objects
+	SelectObject(hdc, oldBrush);
+	SelectObject(hdc, oldPen);
 }
